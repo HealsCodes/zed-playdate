@@ -135,13 +135,17 @@ impl PlaydateExtension {
             luacats_tag
         );
 
-        zed::download_file(&tarball_url, ".", zed::DownloadedFileType::GzipTar).map_err(|e| {
-            let err = format!(
-                "failed to download playdate-luacats tag {}: {}",
-                luacats_tag, e
-            );
-            err
-        })?;
+        let tarball_main_url = "https://github.com/notpeter/playdate-luacats/archive/refs/heads/main.tar.gz";
+
+        zed::download_file(&tarball_url, ".", zed::DownloadedFileType::GzipTar).or_else(|e| {
+            // Allow falling back to the latest main branch
+            match zed::download_file(&tarball_main_url, ".", zed::DownloadedFileType::GzipTar) {
+                Ok(()) => Ok(()),
+                Err(err) => Err(format!(
+                    "failed to download playdate-luacats tag {}: {},\nfailed to download playdate-luacats main: {}",
+                    luacats_tag, e, err))
+            }
+        }).map_err(|e2|{ format!("{}", e2) })?;
 
         // Convert relative path to absolute path using current_dir()
         // The extension work directory is where download_file extracts files
